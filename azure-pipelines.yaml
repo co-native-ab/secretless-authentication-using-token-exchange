@@ -1,0 +1,68 @@
+parameters:
+- name: EntraTenantID
+  displayName: Entra Tenant ID
+  type: string
+- name: EntraClientID
+  displayName: Entra Client ID
+  type: string
+- name: PrintTokens
+  displayName: Print Tokens (for debugging)
+  type: boolean
+  default: false  
+
+trigger: none
+
+pool: mdpsg
+
+steps:
+- script: |
+    AZURE_DEVOPS_JWT=$(curl -s -X POST "${SYSTEM_OIDCREQUESTURI}?api-version=7.1" \
+      -H "Content-Length: 0" \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $(System.AccessToken)" \
+      | jq -r '.oidcToken')
+
+    if [[ "${PRINT_TOKENS}" == "True" ]]; then
+      echo "Azure DevOps JWT:"
+      echo ${AZURE_DEVOPS_JWT}
+    fi
+
+    echo "##vso[task.setvariable variable=AZURE_DEVOPS_JWT;isOutput=true;isSecret=true]${AZURE_DEVOPS_JWT}"
+  name: ExtractAzureDevOpsJWT
+  displayName: Extract Azure DevOps JWT
+  env:
+    PRINT_TOKENS: ${{ parameters.PrintTokens }}
+
+- script: |
+    ENTRA_JWT=$(curl -s -L -X POST "https://login.microsoftonline.com/${ENTRA_TENANT_ID}/oauth2/v2.0/token" \
+      -H 'Content-Type: application/x-www-form-urlencoded' \
+      --data-urlencode 'grant_type=client_credentials' \
+      --data-urlencode "client_id=${ENTRA_CLIENT_ID}" \
+      --data-urlencode 'client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer' \
+      --data-urlencode 'scope=https://graph.microsoft.com/.default' \
+      --data-urlencode "client_assertion=${AZURE_DEVOPS_JWT}" \
+      | jq -r '.access_token')
+    
+    if [[ "${PRINT_TOKENS}" == "True" ]]; then
+      echo "Entra JWT:"
+      echo ${ENTRA_JWT}
+    fi
+
+    echo "##vso[task.setvariable variable=ENTRA_JWT;isOutput=true;isSecret=true]${ENTRA_JWT}"
+  name: ExtractEntraJWT
+  displayName: Exchange Azure DevOps JWT for Entra JWT
+  env:
+    PRINT_TOKENS: ${{ parameters.PrintTokens }}
+    ENTRA_TENANT_ID: ${{ parameters.EntraTenantID }}
+    ENTRA_CLIENT_ID: ${{ parameters.EntraClientID }}
+    AZURE_DEVOPS_JWT: $(ExtractAzureDevOpsJWT.AZURE_DEVOPS_JWT)
+
+- script: |
+    curl -s "https://graph.microsoft.com/v1.0/applications(appId='${ENTRA_CLIENT_ID}')" \
+      -H "Authorization: Bearer ${ENTRA_JWT}" \
+      | jq
+  name: UseEntraJWT
+  displayName: Use Entra JWT to call Microsoft Graph API
+  env:
+    ENTRA_CLIENT_ID: ${{ parameters.EntraClientID }}
+    ENTRA_JWT: $(ExtractEntraJWT.ENTRA_JWT)
