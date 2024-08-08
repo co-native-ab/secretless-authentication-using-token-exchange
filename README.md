@@ -1,10 +1,10 @@
 # Secretless authentication using token exchange
 
-The [RFC7523 (_JSON Web Token (JWT) Profile for OAuth 2.0 Client Authentication and Authorization Grants_)](https://datatracker.ietf.org/doc/html/rfc7523) is a specification that defines the use of a JSON Web Token (JWT) Bearer Token as a means for requesting an OAuth 2.0 access token as well as for client authentication.
+The [RFC 7523](https://datatracker.ietf.org/doc/html/rfc7523) is a specification that defines the use of a JWT Bearer Token as a means for requesting an OAuth 2.0 access token as well as for client authentication.
 
-This is a demo to showcase [2.2. Using JWTs for Client Authentication](https://datatracker.ietf.org/doc/html/rfc7523#section-2.2) to enable authentication without sharing a secret.
+This is a demonstration to showcase [using JWTs for client authentication](https://datatracker.ietf.org/doc/html/rfc7523#section-2.2) to enable authentication without sharing a secret.
 
-The demo is built around Azure, but could the client (Azure DevOps in this case) and the authorization server (Entra in this case) could just as easily be other services.
+It is built around Azure, but the client (Azure DevOps in this case) and the authorization server (Entra in this case) could just as easily be other services.
 
 A simplified example looks like this:
 
